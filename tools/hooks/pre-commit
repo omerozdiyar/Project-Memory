@@ -1,0 +1,26 @@
+#!/bin/sh
+# Memory check: blocks commits that change code without updating docs/memory/.
+# Install (once, at repo root):  git config core.hooksPath tools/hooks
+# Deliberate bypass:             git commit --no-verify
+
+staged=$(git diff --cached --name-only)
+
+# Anything outside docs/memory, the memory entry files, and tooling counts as "code"
+code_changed=$(echo "$staged" | grep -vE '^(docs/memory/|tools/|CLAUDE\.md|AGENTS\.md|README|\.gitignore)' || true)
+memory_changed=$(echo "$staged" | grep -E '^docs/memory/' || true)
+
+if [ -n "$code_changed" ] && [ -z "$memory_changed" ]; then
+  echo ""
+  echo "⛔ MEMORY CHECK: code changed but docs/memory/ was not updated."
+  echo ""
+  echo "Changes containing code:"
+  echo "$code_changed" | sed 's/^/  - /'
+  echo ""
+  echo "Rule (constitution.md, rule 3): memory and code ship in the same commit."
+  echo "At minimum, changelog.md and the relevant state file should be updated."
+  echo "To bypass deliberately: git commit --no-verify"
+  echo ""
+  exit 1
+fi
+
+exit 0
